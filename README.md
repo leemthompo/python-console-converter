@@ -138,7 +138,7 @@ your-docs/
 ## Example transformation
 
 ### Before
-```markdown
+``````markdown
 ```console
 GET /my-index/_search
 {
@@ -147,10 +147,10 @@ GET /my-index/_search
   }
 }
 ```
-```
+``````
 
 ### After
-```markdown
+``````markdown
 ::::{tab-set}
 :group: api-examples
 
@@ -175,12 +175,12 @@ GET /my-index/_search
 ... (other languages)
 
 ::::
-```
+``````
 
 ## Code formatting details
 
 ### curl formatting
-Curl commands are formatted with line breaks for readability:
+Curl commands are formatted with line breaks for readability and the URL is moved to the first line:
 ```bash
 curl -X POST "$ELASTICSEARCH_URL/my-index/_search" \
   -H "Content-Type: application/json" \
@@ -254,7 +254,3 @@ Check the error messages for specific language failures. The tool will complete 
 - Unsupported Console syntax
 - Complex queries that the converter doesn't handle
 - Missing required fields in requests
-
-## License
-
-Part of the Elasticsearch documentation tooling.
