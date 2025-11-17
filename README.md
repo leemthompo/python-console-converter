@@ -230,8 +230,6 @@ options:
 
 ## Limitations
 
-- Only processes markdown files (`.md` extension)
-- Requires `@elastic/request-converter` for language conversions
 - Non-recursive directory processing (processes only top-level `.md` files)
 - Skips files that already contain language tabs (use `--regenerate` to update)
 
