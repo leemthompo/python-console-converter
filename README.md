@@ -137,6 +137,8 @@ your-docs/
 
 ## Example transformation
 
+See https://github.com/elastic/docs-content/pull/3908 for an example with live preview.
+
 ### Before
 ``````markdown
 ```console
