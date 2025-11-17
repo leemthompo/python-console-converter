@@ -1,4 +1,4 @@
-# Python console converter
+# Python tool for converting `console` code blocks in the docs and reformatting source page
 
 CLI tool to add language tabs to Elasticsearch documentation markdown files. Replaces console code blocks with tab-sets containing Console and other language examples.
 
