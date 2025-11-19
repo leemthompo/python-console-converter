@@ -11,7 +11,9 @@ This tool automates the conversion of Elasticsearch Console syntax code blocks i
 ## Features
 
 - **Idempotent regeneration** - Safely regenerate language snippets without manual intervention
+- **Undo capability** - Restore original console/esql blocks and remove snippets with `--undo`
 - **Snippet management** - Organizes code examples into reusable snippet files with include directives
+- **Auto-generated warnings** - Adds comment headers to generated snippets warning against direct edits
 - **Parallel processing** - Converts multiple languages concurrently using ThreadPoolExecutor for better performance
 - **Multi-language support** - Supports curl, Python, JavaScript, PHP, and Ruby
 - **ES|QL support** - Handles both Console and ES|QL code blocks
@@ -92,6 +94,21 @@ The regenerate mode:
 - Regenerates language snippets for each console snippet
 - Updates include directives in markdown if numbering changed
 - Leaves markdown structure unchanged
+
+### Undo snippetization
+
+Restore original console/esql blocks and remove snippets:
+```bash
+./add-language-examples.py index-basics.md --undo
+./add-language-examples.py ./docs/ -u
+```
+
+The undo mode:
+- Reads console/esql snippets from `_snippets/{filename}/`
+- Replaces tab-sets with original console/esql code blocks
+- Restores annotations (numbered lists) if present
+- Deletes the page-specific snippets directory (`_snippets/{filename}/`)
+- Leaves directive nesting colons in place (harmless)
 
 ## How it works
 
@@ -219,7 +236,7 @@ GET /my-index/_doc/1 <1>
 ## Options
 
 ```
-usage: add-language-examples.py [-h] [-l LANGUAGES [LANGUAGES ...]] [-r] path
+usage: add-language-examples.py [-h] [-l LANGUAGES [LANGUAGES ...]] [-r] [-u] path
 
 positional arguments:
   path                  Path to a markdown file or directory
@@ -228,6 +245,7 @@ options:
   -h, --help            Show help message
   -l, --languages       Target language(s) for conversion
   -r, --regenerate      Regenerate snippets from console snippets
+  -u, --undo            Undo snippetization (restore original blocks)
 ```
 
 ## Limitations

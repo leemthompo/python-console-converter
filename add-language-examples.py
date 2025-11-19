@@ -830,9 +830,100 @@ def has_language_tabs(markdown_text, languages):
 
     return False, None
 
-def process_file(filepath, languages=None, regenerate=False):
+
+def undo_snippets(filepath):
+    """Undo snippetization: restore console/esql blocks and delete page-specific snippets directory
+
+    Args:
+        filepath: Path to markdown file
+
+    Returns:
+        bool: True if successful
+    """
+    import shutil
+
+    parent_filename = filepath.stem
+    snippets_dir = filepath.parent / '_snippets' / parent_filename
+
+    print(f"\n{'='*60}")
+    print(f"📄 File: {filepath.name}")
+    print(f"🔙 Undoing snippetization")
+    print(f"{'='*60}")
+
+    # Check if snippets directory exists
+    if not snippets_dir.exists():
+        print("❌ No snippets directory found")
+        return False
+
+    # Get all console and esql snippets
+    console_snippets = get_console_snippets(snippets_dir)
+    esql_snippets = sorted(
+        [(int(re.match(r'example(\d+)-esql\.md', p.name).group(1)), p)
+         for p in snippets_dir.glob('example*-esql.md')],
+        key=lambda x: x[0]
+    ) if list(snippets_dir.glob('example*-esql.md')) else []
+
+    if not console_snippets and not esql_snippets:
+        print("❌ No console or esql snippets found")
+        return False
+
+    print(f"🔍 Found {len(console_snippets)} console snippet(s) and {len(esql_snippets)} esql snippet(s)")
+
+    # Read markdown
+    with open(filepath, 'r', encoding='utf-8') as f:
+        markdown_text = f.read()
+
+    # Build replacements for each tab-set
+    # Tab-sets should appear in order matching snippet numbers
+    replacements = []
+
+    # Process console snippets
+    for example_num, snippet_path in console_snippets:
+        code, annotations = parse_snippet_file(snippet_path)
+        replacement = f"```console\n{code}\n```"
+        if annotations:
+            replacement += f"\n\n{annotations}"
+        replacements.append(replacement)
+
+    # Process esql snippets
+    for example_num, snippet_path in esql_snippets:
+        code, annotations = parse_snippet_file(snippet_path)
+        replacement = f"```esql\n{code}\n```"
+        if annotations:
+            replacement += f"\n\n{annotations}"
+        replacements.append(replacement)
+
+    # Replace tab-sets with original code blocks
+    # Pattern matches tab-set blocks
+    tabset_pattern = r'::::\{tab-set\}.*?::::'
+    replacement_iter = iter(replacements)
+
+    def replace_tabset(match):
+        try:
+            return next(replacement_iter)
+        except StopIteration:
+            return match.group(0)  # Keep original if we run out of replacements
+
+    updated_markdown = re.sub(tabset_pattern, replace_tabset, markdown_text, flags=re.DOTALL)
+
+    # Write updated markdown
+    with open(filepath, 'w', encoding='utf-8') as f:
+        f.write(updated_markdown)
+
+    # Delete only the page-specific snippets subdirectory (_snippets/{filename}/)
+    shutil.rmtree(snippets_dir)
+    print(f"🗑️  Deleted snippets subdirectory: _snippets/{parent_filename}/")
+
+    print(f"✅ Successfully restored {len(replacements)} code block(s)\n")
+    return True
+
+def process_file(filepath, languages=None, regenerate=False, undo=False):
     """Process a single markdown file"""
     target_langs = languages if languages else DEFAULT_LANGUAGES
+
+    # Handle undo mode
+    if undo:
+        return undo_snippets(filepath)
 
     # Handle regenerate mode
     if regenerate:
@@ -939,7 +1030,7 @@ def process_file(filepath, languages=None, regenerate=False):
         return True
 
 
-def process_directory(dirpath, languages=None, regenerate=False):
+def process_directory(dirpath, languages=None, regenerate=False, undo=False):
     """Process all markdown files in a directory (non-recursive)"""
     md_files = list(Path(dirpath).glob('*.md'))
 
@@ -948,12 +1039,18 @@ def process_directory(dirpath, languages=None, regenerate=False):
         return
 
     target_langs = languages if languages else DEFAULT_LANGUAGES
-    mode = "Regenerating" if regenerate else "Processing"
+    if undo:
+        mode = "Undoing"
+    elif regenerate:
+        mode = "Regenerating"
+    else:
+        mode = "Processing"
 
     print(f"\n{'='*60}")
     print(f"📁 Directory: {dirpath}")
     print(f"📄 Found {len(md_files)} markdown file(s)")
-    print(f"🎯 Target languages: {', '.join(target_langs)}")
+    if not undo:
+        print(f"🎯 Target languages: {', '.join(target_langs)}")
     print(f"🔄 Mode: {mode}")
     print(f"{'='*60}\n")
 
@@ -961,7 +1058,7 @@ def process_directory(dirpath, languages=None, regenerate=False):
     skipped_count = 0
 
     for filepath in md_files:
-        if process_file(filepath, languages, regenerate):
+        if process_file(filepath, languages, regenerate, undo):
             updated_count += 1
         else:
             skipped_count += 1
@@ -991,6 +1088,10 @@ Examples:
   # Regenerate language snippets from console snippets
   %(prog)s index-basics.md --regenerate
   %(prog)s ./docs/ -r
+
+  # Undo snippetization (restore original console/esql blocks)
+  %(prog)s index-basics.md --undo
+  %(prog)s ./docs/ -u
         """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
@@ -1009,12 +1110,22 @@ Examples:
         action='store_true',
         help='Regenerate language snippets from console snippets (deletes all non-console snippets, then regenerates)'
     )
+    parser.add_argument(
+        '-u', '--undo',
+        action='store_true',
+        help='Undo snippetization: restore original console/esql blocks and delete snippets directory'
+    )
 
     args = parser.parse_args()
     path = Path(args.path)
 
     if not path.exists():
         print(f"❌ Error: {path} does not exist")
+        sys.exit(1)
+
+    # Check for conflicting flags
+    if args.regenerate and args.undo:
+        print(f"❌ Error: Cannot use --regenerate and --undo together")
         sys.exit(1)
 
     # Determine languages to use
@@ -1024,9 +1135,9 @@ Examples:
         if path.suffix != '.md':
             print(f"❌ Error: {path} is not a markdown file")
             sys.exit(1)
-        process_file(path, languages, args.regenerate)
+        process_file(path, languages, args.regenerate, args.undo)
     elif path.is_dir():
-        process_directory(path, languages, args.regenerate)
+        process_directory(path, languages, args.regenerate, args.undo)
     else:
         print(f"❌ Error: {path} is neither a file nor directory")
         sys.exit(1)
