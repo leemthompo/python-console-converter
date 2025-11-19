@@ -1,4 +1,4 @@
-# Python console converter
+# Python tool for converting `console` code blocks in the docs and reformatting source page
 
 CLI tool to add language tabs to Elasticsearch documentation markdown files. Replaces console code blocks with tab-sets containing Console and other language examples.
 
@@ -137,8 +137,10 @@ your-docs/
 
 ## Example transformation
 
+See https://github.com/elastic/docs-content/pull/3908 for an example with live preview.
+
 ### Before
-```markdown
+``````markdown
 ```console
 GET /my-index/_search
 {
@@ -147,10 +149,10 @@ GET /my-index/_search
   }
 }
 ```
-```
+``````
 
 ### After
-```markdown
+``````markdown
 ::::{tab-set}
 :group: api-examples
 
@@ -175,12 +177,12 @@ GET /my-index/_search
 ... (other languages)
 
 ::::
-```
+``````
 
 ## Code formatting details
 
 ### curl formatting
-Curl commands are formatted with line breaks for readability:
+Curl commands are formatted with line breaks for readability and the URL is moved to the first line:
 ```bash
 curl -X POST "$ELASTICSEARCH_URL/my-index/_search" \
   -H "Content-Type: application/json" \
@@ -230,8 +232,6 @@ options:
 
 ## Limitations
 
-- Only processes markdown files (`.md` extension)
-- Requires `@elastic/request-converter` for language conversions
 - Non-recursive directory processing (processes only top-level `.md` files)
 - Skips files that already contain language tabs (use `--regenerate` to update)
 
@@ -254,7 +254,3 @@ Check the error messages for specific language failures. The tool will complete 
 - Unsupported Console syntax
 - Complex queries that the converter doesn't handle
 - Missing required fields in requests
-
-## License
-
-Part of the Elasticsearch documentation tooling.
