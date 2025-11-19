@@ -9,6 +9,7 @@ https://www.npmjs.com/package/@elastic/request-converter
 import argparse
 import re
 import subprocess
+
 import sys
 from pathlib import Path
 from tqdm import tqdm
@@ -341,8 +342,19 @@ def write_snippet_file(snippets_dir, parent_filename, example_num, lang, code, a
     else:
         code_lang = lang
 
-    # Build snippet content - just the code block
-    snippet_content = f"""```{code_lang}
+    # Build snippet content - add warning for generated snippets only
+    # Don't add warning to console/esql as they are the source of truth
+    if lang not in ['console', 'esql']:
+        snippet_content = f"""% WARNING: This snippet is auto-generated. Do not edit directly.
+
+% See https://github.com/leemthompo/python-console-converter/blob/main/README.md
+
+```{code_lang}
+{code}
+```
+"""
+    else:
+        snippet_content = f"""```{code_lang}
 {code}
 ```
 """
